@@ -266,6 +266,10 @@ const Editor = () => {
   const [mutedUsers, setMutedUsers] = useState<Set<string>>(new Set());
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  // Add loading state
+  const [isConnecting, setIsConnecting] = useState<boolean>(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState<number>(0);
   
   const socketRef = useRef<Socket | null>(null);
   const peerRef = useRef<Peer | null>(null);
@@ -302,9 +306,22 @@ const Editor = () => {
       : 'https://collaborative-code-editor-jo24.onrender.com';
       
     console.log(`Connecting to socket server at: ${SERVER_URL}`);
+    setIsConnecting(true);
+    setConnectionError(null);
+    setConnectionAttempts(prev => prev + 1);
+    
+    // Add a system message about connection status
+    setMessages(prev => [
+      ...prev, 
+      { 
+        text: `Connecting to server... This may take a moment if the server is waking up.`, 
+        sender: 'system', 
+        timestamp: new Date().toISOString() 
+      }
+    ]);
     
     const newSocket = io(SERVER_URL, {
-      transports: ['websocket', 'polling'],  // Try both transports
+      transports: ['polling', 'websocket'],  // Start with polling, then upgrade to WS
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
@@ -320,14 +337,43 @@ const Editor = () => {
     // Set up error handling
     newSocket.on('connect_error', (error) => {
       console.error("Socket connection error:", error);
+      setConnectionError(`Connection error: ${error.message}`);
+      
+      // Add error message to chat
+      setMessages(prev => [
+        ...prev, 
+        { 
+          text: `Connection error: ${error.message}. Retrying...`, 
+          sender: 'system', 
+          timestamp: new Date().toISOString() 
+        }
+      ]);
+    });
+    
+    newSocket.on('connect', () => {
+      console.log("Socket connected successfully!");
+      setIsConnecting(false);
+      setConnectionError(null);
+      
+      // Add success message to chat
+      setMessages(prev => [
+        ...prev, 
+        { 
+          text: `Connected to server successfully!`, 
+          sender: 'system', 
+          timestamp: new Date().toISOString() 
+        }
+      ]);
     });
     
     newSocket.on('connect_timeout', () => {
       console.error("Socket connection timeout");
+      setConnectionError("Connection timed out. Retrying...");
     });
     
     newSocket.on('error', (error) => {
       console.error("Socket error:", error);
+      setConnectionError(`Socket error: ${error}`);
     });
     
     // Store socket in ref
@@ -800,6 +846,26 @@ const Editor = () => {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Connection status indicator */}
+              {isConnecting && (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-lg animate-pulse">
+                  <div className="w-2 h-2 rounded-full bg-yellow-300"></div>
+                  <span className="text-sm">Connecting...</span>
+                </div>
+              )}
+              {connectionError && !isConnecting && (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-red-500/20 text-red-300 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-red-300"></div>
+                  <span className="text-sm">Connection error</span>
+                </div>
+              )}
+              {!isConnecting && !connectionError && (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-500/20 text-green-300 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-green-300"></div>
+                  <span className="text-sm">Connected</span>
+                </div>
+              )}
+
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
