@@ -305,6 +305,7 @@ const Editor = () => {
       reconnectionDelay: 1000,
       timeout: 20000,
       path: '/socket.io',
+      forceNew: true,
       query: {
         roomId: roomId,
         username: username,
