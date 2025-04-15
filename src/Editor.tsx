@@ -295,17 +295,21 @@ const Editor = () => {
 
     console.log(`Creating new connection for room ${roomId} as ${username}`);
     
-    // Create new socket connection with configurable server URL
-    const SERVER_URL = import.meta.env.VITE_SERVER_URL || window.location.hostname === 'localhost' 
+    // Create socket connection directly to the render server through Netlify's proxy
+    // This ensures we're using the same origin for the WebSocket connection
+    const SERVER_URL = window.location.hostname === 'localhost'
       ? 'http://localhost:3000' 
-      : '';
+      : 'https://collaborative-code-editor-jo24.onrender.com';
+      
+    console.log(`Connecting to socket server at: ${SERVER_URL}`);
+    
     const newSocket = io(SERVER_URL, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],  // Try both transports
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 20000,
-      path: '/socket.io',
       forceNew: true,
+      withCredentials: false,
       query: {
         roomId: roomId,
         username: username,
