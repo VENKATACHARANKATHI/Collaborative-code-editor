@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server.js",
-    "yjs-server": "node yjs-server.js"
+    "yjs-server": "node src/yjs-server.js"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.15.0",
