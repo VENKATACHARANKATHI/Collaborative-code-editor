@@ -21,3 +21,12 @@
   from = "/*"
   to = "/index.html"
   status = 200 
+# WebSocket proxy configuration
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://your-socket-server-url.com/socket.io/:splat"
+  status = 200
+  force = true
+  [redirects.headers]
+    Connection = "upgrade"
+    Upgrade = "websocket" 
