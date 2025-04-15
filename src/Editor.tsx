@@ -14,6 +14,9 @@ import { io, Socket } from 'socket.io-client';
 import Peer from 'peerjs';
 import { Download, Upload, Mic, MicOff, MessageSquare, X, Users, Copy, LogOut } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { yCollab } from 'y-codemirror.next';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 // Type for media streams
 type MediaStreamWithTracks = MediaStream & {
@@ -850,9 +853,9 @@ const Editor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1729] text-white flex flex-col">
-      {/* Header */}
-      <div className="bg-gray-900/50 backdrop-blur-sm border-b border-gray-800">
+    <div className="h-screen flex flex-col bg-[#0f1729] text-white overflow-hidden">
+      {/* Fixed Header */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 shadow-md">
         <div className="container mx-auto px-4 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center space-x-2 md:space-x-4">
@@ -908,13 +911,6 @@ const Editor = () => {
               </select>
 
               <button
-                onClick={toggleDebug}
-                className="flex items-center space-x-1 px-2 py-1 md:px-3 rounded-lg bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
-              >
-                <span className="text-xs md:text-sm">Info</span>
-              </button>
-
-              <button
                 onClick={() => navigate('/')}
                 className="flex items-center space-x-1 px-2 py-1 md:px-3 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
               >
@@ -926,10 +922,10 @@ const Editor = () => {
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row">
+      {/* Content area with padding for fixed header */}
+      <div className="flex flex-col md:flex-row h-full pt-16">
         {/* Editor */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
           <div className="bg-gray-900/30 p-2 border-b border-gray-800 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center space-x-3 md:space-x-5">
               <label className="cursor-pointer p-1 md:p-2 hover:bg-gray-800/50 rounded-lg transition-colors">
@@ -1001,6 +997,7 @@ const Editor = () => {
             </div>
           </div>
 
+          {/* CodeMirror editor - takes remaining height */}
           <div className="flex-1 overflow-hidden">
             <CodeMirror
               value={code}
@@ -1016,9 +1013,15 @@ const Editor = () => {
           </div>
         </div>
 
-        {/* Chat sidebar - Converted to bottom drawer on mobile */}
+        {/* Chat panel - independent scrolling */}
         {showChat && (
-          <div className={`${isMobileView ? 'fixed inset-x-0 bottom-0 h-1/2 z-10' : 'w-80'} bg-gray-900/30 backdrop-blur-sm border-l border-gray-800 flex flex-col`}>
+          <div 
+            className={`${
+              isMobileView 
+                ? 'fixed inset-x-0 bottom-0 h-1/2 z-10' 
+                : 'w-80 h-full'
+            } bg-gray-900/30 backdrop-blur-sm border-l border-gray-800 flex flex-col`}
+          >
             <div className="p-2 md:p-4 border-b border-gray-800 flex justify-between items-center">
               <div>
                 <h3 className="font-semibold text-gray-300 text-sm md:text-base">Chat</h3>
@@ -1031,6 +1034,7 @@ const Editor = () => {
               </button>
             </div>
 
+            {/* Scrollable messages area - independent scrolling */}
             <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -1060,6 +1064,7 @@ const Editor = () => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Message input form */}
             <form onSubmit={sendMessage} className="p-2 md:p-4 border-t border-gray-800">
               <input
                 type="text"
@@ -1073,67 +1078,10 @@ const Editor = () => {
         )}
       </div>
       
-      <audio ref={audioRef} autoPlay hidden />
-
-      {/* Debug overlay */}
-      {showDebug && (
-        <div className="fixed inset-0 bg-black/70 z-50 p-4 overflow-auto text-white">
-          <div className="absolute top-4 right-4">
-            <button onClick={toggleDebug} className="bg-red-500 px-3 py-1 rounded-lg">
-              Close
-            </button>
-          </div>
-          
-          <h2 className="text-xl font-bold mb-4">Information</h2>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-800 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-2">Room Information</h3>
-              <p>Room ID: {roomId}</p>
-              <p>Username: {username}</p>
-              <p>Client ID: {clientIdRef.current}</p>
-              <p>Socket Connected: {socketRef.current?.connected ? 'Yes' : 'No'}</p>
-              <p>Socket ID: {socketRef.current?.id || 'Not connected'}</p>
-            </div>
-            
-            <div className="bg-gray-800 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-2">Connected Users ({connectedUsers.length})</h3>
-              <ul className="list-disc pl-5">
-                {connectedUsers.map((user, index) => (
-                  <li key={index} className="flex items-center justify-between mb-2">
-                    <span>{user.username} (ID: {user.id?.substring(0, 8)}...)</span>
-                    {user.peerId && user.peerId !== peerRef.current?.id && (
-                      <button
-                        onClick={() => toggleUserAudio(user.peerId)}
-                        className={`p-1 rounded-lg transition-colors ${
-                          mutedUsers.has(user.peerId) 
-                            ? 'bg-red-500/20 text-red-400' 
-                            : 'bg-green-500/20 text-green-400'
-                        }`}
-                        title={mutedUsers.has(user.peerId) ? "Unmute user" : "Mute user"}
-                      >
-                        {mutedUsers.has(user.peerId) ? "🔇" : "🔊"}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="bg-gray-800 p-4 rounded-lg col-span-2">
-              <h3 className="text-lg font-semibold mb-2">Recent Messages</h3>
-              <ul className="list-disc pl-5">
-                {messages.slice(-5).map((msg, index) => (
-                  <li key={index}>
-                    [{new Date(msg.timestamp).toLocaleTimeString()}] 
-                    {msg.username || 'System'}: {msg.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Note about collaborative editing limitations */}
+      <div className="fixed bottom-0 left-0 right-0 bg-yellow-600/20 p-1 text-center text-yellow-200 text-xs">
+        <p>Note: For true collaborative editing with multi-cursor support, consider adding a CRDT library like Yjs.</p>
+      </div>
     </div>
   );
 };
