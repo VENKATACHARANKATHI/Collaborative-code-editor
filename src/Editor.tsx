@@ -298,7 +298,7 @@ const Editor = () => {
     // Create new socket connection with configurable server URL
     const SERVER_URL = import.meta.env.VITE_SERVER_URL || window.location.hostname === 'localhost' 
       ? 'http://localhost:3000' 
-      : window.location.origin.replace(/:\d+$/, ':3000');
+      : '/';
     const newSocket = io(SERVER_URL, {
       transports: ['websocket'],
       reconnectionAttempts: 10,
