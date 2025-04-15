@@ -270,6 +270,10 @@ const Editor = () => {
   const [isConnecting, setIsConnecting] = useState<boolean>(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [connectionAttempts, setConnectionAttempts] = useState<number>(0);
+  // Add unread messages notification state
+  const [unreadMessages, setUnreadMessages] = useState<number>(0);
+  // Add state for mobile view
+  const [isMobileView, setIsMobileView] = useState<boolean>(window.innerWidth < 768);
   
   const socketRef = useRef<Socket | null>(null);
   const peerRef = useRef<Peer | null>(null);
@@ -283,6 +287,18 @@ const Editor = () => {
   const toggleDebug = () => {
     setShowDebug(!showDebug);
   };
+
+  // Add responsive handler
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     if (!roomId || !username) {
@@ -465,6 +481,20 @@ const Editor = () => {
     newSocket.on('chat-message', (message) => {
       console.log("Received chat message:", message);
       setMessages(prev => [...prev, message]);
+      
+      // Increment unread message count if chat is not visible
+      if (!showChat) {
+        setUnreadMessages(prev => prev + 1);
+        
+        // Play notification sound
+        try {
+          const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2356/2356-preview.mp3');
+          notificationSound.volume = 0.5;
+          notificationSound.play().catch(e => console.log('Error playing notification sound:', e));
+        } catch (error) {
+          console.log('Error with notification sound:', error);
+        }
+      }
       
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -824,52 +854,53 @@ const Editor = () => {
       {/* Header */}
       <div className="bg-gray-900/50 backdrop-blur-sm border-b border-gray-800">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 md:space-x-4">
               <div className="flex items-center">
                 <span className="font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  <img src="https://i.pinimg.com/736x/46/97/d5/4697d53c83152a902cb3917d12b77315.jpg" alt="Team F12" className="w-10 h-10 inline-block mr-2" />
-                  Collaborative Coding
+                  <img src="https://i.pinimg.com/736x/46/97/d5/4697d53c83152a902cb3917d12b77315.jpg" alt="Team F12" className="w-8 h-8 md:w-10 md:h-10 inline-block mr-2" />
+                  <span className="hidden md:inline">Collaborative Coding</span>
+                  <span className="inline md:hidden">Code</span>
                 </span>
               </div>
               
-              <div className="flex items-center space-x-2 px-3 py-1 bg-gray-800/50 rounded-lg border border-gray-700">
-                <span className="text-sm text-gray-400">Room:</span>
-                <span className="text-sm font-mono">{roomId}</span>
+              <div className="flex items-center space-x-2 px-2 py-1 md:px-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <span className="text-xs md:text-sm text-gray-400">Room:</span>
+                <span className="text-xs md:text-sm font-mono truncate max-w-[80px] md:max-w-none">{roomId}</span>
                 <button
                   onClick={copyRoomId}
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-3 h-3 md:w-4 md:h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 md:space-x-4">
               {/* Connection status indicator */}
               {isConnecting && (
-                <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-lg animate-pulse">
+                <div className="flex items-center space-x-1 md:space-x-2 px-2 py-1 md:px-3 bg-yellow-500/20 text-yellow-300 rounded-lg animate-pulse">
                   <div className="w-2 h-2 rounded-full bg-yellow-300"></div>
-                  <span className="text-sm">Connecting...</span>
+                  <span className="text-xs md:text-sm">Connecting...</span>
                 </div>
               )}
               {connectionError && !isConnecting && (
-                <div className="flex items-center space-x-2 px-3 py-1 bg-red-500/20 text-red-300 rounded-lg">
+                <div className="flex items-center space-x-1 md:space-x-2 px-2 py-1 md:px-3 bg-red-500/20 text-red-300 rounded-lg">
                   <div className="w-2 h-2 rounded-full bg-red-300"></div>
-                  <span className="text-sm">Connection error</span>
+                  <span className="text-xs md:text-sm">Error</span>
                 </div>
               )}
               {!isConnecting && !connectionError && (
-                <div className="flex items-center space-x-2 px-3 py-1 bg-green-500/20 text-green-300 rounded-lg">
+                <div className="flex items-center space-x-1 md:space-x-2 px-2 py-1 md:px-3 bg-green-500/20 text-green-300 rounded-lg">
                   <div className="w-2 h-2 rounded-full bg-green-300"></div>
-                  <span className="text-sm">Connected</span>
+                  <span className="text-xs md:text-sm">Connected</span>
                 </div>
               )}
 
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="bg-gray-800/50 text-sm px-3 py-1 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-gray-800/50 text-xs md:text-sm px-2 py-1 md:px-3 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {Object.entries(languageMap).map(([key, value]) => (
                   <option key={key} value={key}>{value.name}</option>
@@ -878,17 +909,17 @@ const Editor = () => {
 
               <button
                 onClick={toggleDebug}
-                className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+                className="flex items-center space-x-1 px-2 py-1 md:px-3 rounded-lg bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
               >
-                <span className="text-sm">Room Info</span>
+                <span className="text-xs md:text-sm">Info</span>
               </button>
 
               <button
                 onClick={() => navigate('/')}
-                className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                className="flex items-center space-x-1 px-2 py-1 md:px-3 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
               >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm">Leave</span>
+                <LogOut className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="text-xs md:text-sm hidden md:inline">Leave</span>
               </button>
             </div>
           </div>
@@ -896,64 +927,76 @@ const Editor = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col md:flex-row">
         {/* Editor */}
         <div className="flex-1 flex flex-col">
-          <div className="bg-gray-900/30 p-2 border-b border-gray-800 flex items-center justify-between">
-            <div className="flex items-center space-x-5">
-              <label className="cursor-pointer p-2 hover:bg-gray-800/50 rounded-lg transition-colors">
+          <div className="bg-gray-900/30 p-2 border-b border-gray-800 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-3 md:space-x-5">
+              <label className="cursor-pointer p-1 md:p-2 hover:bg-gray-800/50 rounded-lg transition-colors">
                 <input
                   type="file"
                   onChange={handleImport}
                   className="hidden"
                 />
-                <Upload className="w-5 h-5 text-gray-400 hover:text-white" />
+                <Upload className="w-4 h-4 md:w-5 md:h-5 text-gray-400 hover:text-white" />
               </label>
               
               <button
                 onClick={handleExport}
-                className="p-2 hover:bg-gray-800/50 rounded-lg transition-colors"
+                className="p-1 md:p-2 hover:bg-gray-800/50 rounded-lg transition-colors"
               >
-                <Download className="w-5 h-5 text-gray-400 hover:text-white" />
+                <Download className="w-4 h-4 md:w-5 md:h-5 text-gray-400 hover:text-white" />
               </button>
               
               <button
                 onClick={toggleMic}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-1 md:p-2 rounded-lg transition-colors ${
                   isMicOn ? 'bg-green-500/20 text-green-400' : 'hover:bg-gray-800/50 text-gray-400 hover:text-white'
                 }`}
               >
-                {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                {isMicOn ? <Mic className="w-4 h-4 md:w-5 md:h-5" /> : <MicOff className="w-4 h-4 md:w-5 md:h-5" />}
               </button>
               
               <button
                 onClick={toggleAllAudio}
-                className={`p-2 rounded-lg transition-colors flex items-center ${
+                className={`p-1 md:p-2 rounded-lg transition-colors flex items-center ${
                   isAudioMuted ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
                 }`}
                 title={isAudioMuted ? "Unmute all audio" : "Mute all audio"}
               >
-                <span className="w-5 h-5 flex items-center justify-center text-lg">
+                <span className="w-4 h-4 md:w-5 md:h-5 flex items-center justify-center text-base md:text-lg">
                   {isAudioMuted ? "🔇" : "🔊"}
                 </span>
               </button>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-400">
+            <div className="flex items-center space-x-3 md:space-x-4">
+              <div className="flex items-center space-x-1 md:space-x-2">
+                <Users className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                <span className="text-xs md:text-sm text-gray-400">
                   {connectedUsers.length}
                 </span>
               </div>
               
               <button
-                onClick={() => setShowChat(!showChat)}
-                className={`p-2 rounded-lg transition-colors ${
+                onClick={() => {
+                  setShowChat(!showChat);
+                  if (!showChat) {
+                    // Reset unread messages when opening chat
+                    setUnreadMessages(0);
+                  }
+                }}
+                className={`p-1 md:p-2 rounded-lg transition-colors relative ${
                   showChat ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-gray-800/50 text-gray-400 hover:text-white'
                 }`}
               >
-                <MessageSquare className="w-5 h-5" />
+                <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+                {/* Notification badge */}
+                {!showChat && unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 md:w-5 md:h-5 flex items-center justify-center animate-pulse">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -973,26 +1016,26 @@ const Editor = () => {
           </div>
         </div>
 
-        {/* Chat sidebar */}
+        {/* Chat sidebar - Converted to bottom drawer on mobile */}
         {showChat && (
-          <div className="w-80 bg-gray-900/30 backdrop-blur-sm border-l border-gray-800 flex flex-col">
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+          <div className={`${isMobileView ? 'fixed inset-x-0 bottom-0 h-1/2 z-10' : 'w-80'} bg-gray-900/30 backdrop-blur-sm border-l border-gray-800 flex flex-col`}>
+            <div className="p-2 md:p-4 border-b border-gray-800 flex justify-between items-center">
               <div>
-                <h3 className="font-semibold text-gray-300">Chat</h3>
+                <h3 className="font-semibold text-gray-300 text-sm md:text-base">Chat</h3>
               </div>
               <button
                 onClick={() => setShowChat(false)}
                 className="text-gray-400 hover:text-white p-1 hover:bg-gray-800/50 rounded transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
               {messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`p-3 rounded-lg ${
+                  className={`p-2 md:p-3 rounded-lg ${
                     message.sender === clientIdRef.current
                       ? 'bg-blue-500/20 ml-auto'
                       : message.sender === 'system'
@@ -1000,7 +1043,7 @@ const Editor = () => {
                       : 'bg-gray-800/50'
                   } max-w-[80%]`}
                 >
-                  <p className="text-sm">
+                  <p className="text-xs md:text-sm">
                     {message.sender === 'system' ? (
                       <span>{message.text}</span>
                     ) : (
@@ -1009,7 +1052,7 @@ const Editor = () => {
                       </>
                     )}
                   </p>
-                  <span className="text-xs text-gray-400 mt-1 block">
+                  <span className="text-[10px] md:text-xs text-gray-400 mt-1 block">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
@@ -1017,13 +1060,13 @@ const Editor = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={sendMessage} className="p-4 border-t border-gray-800">
+            <form onSubmit={sendMessage} className="p-2 md:p-4 border-t border-gray-800">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="w-full bg-gray-800/50 text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
+                className="w-full bg-gray-800/50 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 text-xs md:text-sm"
               />
             </form>
           </div>
