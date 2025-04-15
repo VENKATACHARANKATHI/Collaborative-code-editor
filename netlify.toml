@@ -24,7 +24,7 @@
 # WebSocket proxy configuration
 [[redirects]]
   from = "/socket.io/*"
-  to = "https://your-socket-server-url.com/socket.io/:splat"
+  to = "https://collaborative-code-editor-jo24.onrender.com/socket.io/:splat"
   status = 200
   force = true
   [redirects.headers]
