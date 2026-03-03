@@ -115,7 +115,7 @@ const Home = () => {
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               <img src="https://i.pinimg.com/736x/46/97/d5/4697d53c83152a902cb3917d12b77315.jpg" alt="Team F12" className="w-10 h-10 inline-block mr-2" />
-              Team F12
+              Code Editor
               </h1>
               <p className="text-gray-400 mb-8">
                 Real-time Collaborative Code Editor
